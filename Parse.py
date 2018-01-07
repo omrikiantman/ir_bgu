@@ -93,7 +93,7 @@ class Parse:
                         # no conditions at all, just add the letter
                         self.current_word += self.current_char
                         self.last_char = self.current_char
-                    elif self.current_char == '.':
+                    elif self.current_char in ('.', "'", "\"", "`"):
                         # a special case - we don't add dots to the word, but it's important to be aware of it.
                         self.last_char = self.current_char
                     else:

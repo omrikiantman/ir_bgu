@@ -44,8 +44,11 @@ class ReadFile:
                         for term_doc in term_docs:
                             # add each term from each doc to the indexer dictionary
                             self.documents_dict[term_doc.docno] = \
-                                DocumentDict(term_doc.docno, term_doc.max_tf, term_doc.length, term_doc.num_of_words)
+                                DocumentDict(term_doc.docno, term_doc.max_tf, term_doc.length, term_doc.num_of_words,
+                                             os.path.join(self.documents_path, directory, doc_file_name))
                             self.indexer.add_new_term_dict(term_doc.terms)
+                            term_doc.terms.clear()
+                            del term_doc
             counter = counter + 1
             if counter == memory_limit:
                 # if we need to write the current file to disk and open a new one
@@ -55,7 +58,7 @@ class ReadFile:
                 file_num += 1
                 print ('END INDEXING - ' + time.strftime("%H:%M:%S"))
         # at the end, write the last file to disk
-        print ('START INDEXING - ' + time.strftime("%H:%M:%S"))
+        print ('START INDEXING LAST FILE - ' + time.strftime("%H:%M:%S"))
         self.indexer.flush_dictionary_to_disk_string(str(file_num))
         print ('END INDEXING LAST FILE - ' + time.strftime("%H:%M:%S"))
         pool.close()

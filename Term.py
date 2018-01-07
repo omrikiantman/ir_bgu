@@ -65,6 +65,13 @@ class Term:
     def __hash__(self):
         return hash(self.name)
 
+    def get_tf_value(self):
+        if self.is_header is True:
+            return float(self.count * 2)
+        if self.first_location <= 200:
+            return float(self.count * 1.2)
+        return float(self.count)
+
 
 def term_string_to_term_object(name, term_string):
     # convert a term string, the was it's written in disk, to a term object

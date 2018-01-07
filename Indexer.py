@@ -6,6 +6,10 @@ from sys import stdout
 import CacheTerm
 import Term
 import traceback
+from string import  ascii_lowercase
+import shared_variables as globs
+from math import log
+import time
 
 
 class Indexer:
@@ -48,6 +52,7 @@ class Indexer:
     def unite_temp_postings(self):
         # unite all the temp postings file and create the inverted index, main dictionary, and cache
         temp_postings_files = []
+        print ('START UNITE_TEMP_POSTING - ' + time.strftime("%H:%M:%S"))
         try:
             # open all postings file, read only the first line
             for file_num, posting_file_path in enumerate(os.listdir(self.root_path)):
@@ -120,6 +125,7 @@ class Indexer:
 
     def create_cache(self):
         # create the cache from the main program
+        print ('START CACHE - ' + time.strftime("%H:%M:%S"))
         posting_file = None
         try:
             # pick 10,000 meaningful words, logic is in the TermDict __cmp__
@@ -179,3 +185,22 @@ class Indexer:
         finally:
             if posting_file is not None:
                 posting_file.close()
+
+    def build_document_weight(self, documents_dict):
+        print ('START build_document_weight - ' + time.strftime("%H:%M:%S"))
+        file_names = '0' + ascii_lowercase
+        num_of_documents = globs.num_of_documents
+        for letter in file_names:
+            posting_file_path = ''.join([os.path.join(self.root_path,
+                                                       Indexer.STEMMING_PREFIX if self.is_stemming is True else ''),
+                                          Indexer.POSTING_PREFIX, letter, '.txt'])
+            posting_file = PostingFile.PostingFile(posting_file_path, letter, False)
+            file_not_closed = True
+            while file_not_closed:
+                df = len(posting_file.postings)
+                for term in posting_file.postings:
+                    document =  documents_dict[term.docno]
+                    document.weight += (term.get_tf_value()/document.max_tf)\
+                                       * log(float(num_of_documents)/float(df), 2)
+                file_not_closed = posting_file.read_next_term_string()
+
