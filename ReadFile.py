@@ -6,6 +6,7 @@ import multiprocessing
 import time
 import Parse
 from DocumentDict import DocumentDict
+import shared_variables as globs
 
 
 class ReadFile:
@@ -43,9 +44,13 @@ class ReadFile:
 
                         for term_doc in term_docs:
                             # add each term from each doc to the indexer dictionary
+                            # TODO verify this path is correct
+                            # self.documents_dict[term_doc.docno] = \
+                            #     DocumentDict(term_doc.docno, term_doc.max_tf, term_doc.length, term_doc.num_of_words,
+                            #                  os.path.join(self.documents_path, directory, doc_file_name))
                             self.documents_dict[term_doc.docno] = \
                                 DocumentDict(term_doc.docno, term_doc.max_tf, term_doc.length, term_doc.num_of_words,
-                                             os.path.join(self.documents_path, directory, doc_file_name))
+                                         os.path.join(directory, doc_file_name))
                             self.indexer.add_new_term_dict(term_doc.terms)
                             term_doc.terms.clear()
                             del term_doc

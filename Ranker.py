@@ -12,7 +12,8 @@ class Ranker:
         # calulate each document rank by the cosSim formula and some other attributes
         query_weight = self.__calculate_query_weight()
         for relevant_document in self.relevant_documents:
-            relevant_document.final_score = relevant_document.score/sqrt(query_weight*relevant_document.document_weight)
+            cos_sim = relevant_document.tfidf_score/sqrt(query_weight*relevant_document.document_weight)
+            relevant_document.final_score = cos_sim
         return sorted(self.relevant_documents, reverse=True)
 
 

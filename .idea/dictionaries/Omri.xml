@@ -2,6 +2,8 @@
   <dictionary name="Omri">
     <words>
       <w>docno</w>
+      <w>guies</w>
+      <w>tfidf</w>
     </words>
   </dictionary>
 </component>

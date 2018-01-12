@@ -15,6 +15,9 @@ import shared_variables as globs
 from DocnoParser import DocnoParser
 import cPickle as Pickle
 from Searcher import Searcher
+import string
+import wikipedia
+from numpy import random
 
 STOP_WORDS_FILE_NAME = 'stop_words.txt'
 TEMP_POSTING_PREFIX = 'temp_posting_'
@@ -143,6 +146,7 @@ def run_index():
                                       indexer, globs.constants, globs.stop_words, is_stemming.get())
         read_file.index_folder()
         globs.num_of_documents = len(read_file.documents_dict)
+
         globs.documents_dict = read_file.documents_dict
         del read_file
         indexer.unite_temp_postings()
@@ -154,6 +158,7 @@ def run_index():
         #    for key,val in main_dictionary.iteritems():
         #        my_stats_file.write('{},{},{}\n'.format(key,val.tf,val.df))
         globs.cache = indexer.cache_dict
+        globs.average_doc_size = globs.average_doc_size/globs.num_of_documents
         dict_cache_path = postings_path
         print ('END TIME - ' + time.strftime("%H:%M:%S"))
         end_time = datetime.now()
@@ -402,7 +407,8 @@ def save_dict_cache():
 
 
 def check_dictionaries_loaded():
-    if (globs.cache is None) or (globs.main_dictionary is None) or (globs.documents_dict is None):
+    if (globs.cache is None) or (globs.main_dictionary is None) or (globs.documents_dict is None)\
+            or (not bool(globs.cache)) or (not bool(globs.main_dictionary)) or (not bool(globs.documents_dict)):
         tkMessageBox.showinfo('ERROR', 'cache is None -  {}.\nmain dictionary is None - {}'
                                        '.\ndocuments_dict is None - {}'
                               .format(globs.cache is None,
@@ -419,6 +425,7 @@ def write_documents_dict_to_disk():
     with open(dict_path, 'wb') as dict_file:
         Pickle.dump(globs.documents_dict, dict_file)
         Pickle.dump(len(globs.documents_dict), dict_file)
+        Pickle.dump(globs.average_doc_size, dict_file)
 
 
 def write_main_dict_to_disk():
@@ -446,10 +453,11 @@ def write_cache_dict_to_disk():
 def load_dict_cache():
     global dict_cache_path
     try:
-        dict_cache_path.set(tkFileDialog.askdirectory())
+        temp_path = tkFileDialog.askdirectory()
         # TODO verify that a path was chosen
-        if (dict_cache_path.get() is None) or (dict_cache_path.get() == ''):
+        if (temp_path is None) or (temp_path == ''):
             return
+        dict_cache_path.set(temp_path)
         if (globs.main_dictionary is not None) and (bool(globs.main_dictionary)):
             globs.main_dictionary.clear()
         if (globs.cache is not None) and (bool(globs.cache)):
@@ -469,6 +477,7 @@ def load_dict_cache():
         with open(documents_dict_path, 'rb') as fp:
             globs.documents_dict = Pickle.load(fp)
             globs.num_of_documents = Pickle.load(fp)
+            globs.average_doc_size = Pickle.load(fp)
         # TODO make sure the documents dict is included in all of the exams
         tkMessageBox.showinfo('OK', 'cache & dictionary loaded')
     except Exception as err:
@@ -500,28 +509,34 @@ def run_manual_query():
     if not check_dictionaries_loaded():
         return
 
+    if is_docno.get() and is_expansion.get():
+        tkMessageBox.showinfo('ERROR', 'both expansion and docno are ticked')
+        return
+
     if is_docno.get():
         run_docno(query)
         return
 
     if is_expansion.get():
-        run_expansion()
+        run_expansion(query)
         return
 
     queries_gui([run_one_query(query)])
 
 
-def run_one_query(query, num_of_docs=50):
+def run_one_query(query, num_of_docs=50, query_id=None, query_desc=None):
     global is_stemming
     global dict_cache_path
+    query_id = 999 if query_id is None else query_id
     start_time = datetime.now()
-    searcher = Searcher(query, is_stemming.get(), dict_cache_path.get())
+    searcher = Searcher(query, is_stemming.get(), dict_cache_path.get(), query_desc)
     ranked_documents = searcher.search_query()
     elapsed_time = (datetime.now() - start_time).seconds
-    return ranked_documents[:num_of_docs], query, elapsed_time
+    return ranked_documents[:num_of_docs], query, elapsed_time, query_id
 
 
 def queries_gui(queries_results):
+    # function to create a gui for the output of the query results and allow saving them to a file
     global query_guies
     query_gui = Toplevel()
     query_guies.append(query_gui)
@@ -533,7 +548,7 @@ def queries_gui(queries_results):
     results_text = Text(query_gui, yscrollcommand=scrollbar_docno.set, height=20, width=140)
 
     scrollbar_docno.config(command=results_text.yview)
-    for i, (ranked_documents, query ,elapsed_time) in enumerate(queries_results):
+    for i, (ranked_documents, query ,elapsed_time, query_id) in enumerate(queries_results):
         results_text.insert(END,
                             '\n{}.Query - \"{}\". {} documents returned in {} seconds\nDocnos:'
                             .format(i+1, query, len(ranked_documents), elapsed_time))
@@ -548,22 +563,35 @@ def queries_gui(queries_results):
 
 
 def save_results(queries_results):
-    print "save_results"
-    print queries_results
+    # save query results to a file
+    options = {'defaultextension':'.txt'}
+    file_name = tkFileDialog.asksaveasfilename(**options)
+    if file_name is None or file_name == "":
+        return
+    with open(file_name, 'w') as results_file:
+        for i, (ranked_documents, query ,elapsed_time, query_id) in enumerate(queries_results):
+            for j, document in enumerate(ranked_documents):
+                written_row = " ".join([str(query_id), '0', str(document.docno), str(j), '42.38', 'mt','\n'])
+                results_file.write(written_row)
+    # save the file name in case we want to reset
+    globs.results_files.append(file_name)
 
 
 def run_docno(docno):
     global is_stemming
+    global dict_cache_path
+    global query_guies
     document = globs.documents_dict.get(docno.upper(), False)
     if document is False:
         tkMessageBox.showinfo('ERROR', 'no such docno - {}'.format(docno))
         return
     docno_parser = DocnoParser(docno, document.file_name, is_stemming.get(), document.max_tf)
-    if not (docno_parser.load_docno()):
+    if not (docno_parser.load_docno(dict_cache_path.get())):
         tkMessageBox.showinfo('ERROR', 'something went wrong'.format(docno))
         return
     top_5_sentences = docno_parser.find_top_5_sentences()
     docno_gui = Toplevel()
+    query_guies.append(docno_gui)
     docno_gui.title("Top 5 Sentences in Docno {}".format(docno))
 
     scrollbar_docno = Scrollbar(docno_gui)
@@ -581,13 +609,55 @@ def run_docno(docno):
 
 
 def run_file_query():
-    print 'file query'
     filename = tkFileDialog.askopenfilename()
     print (filename)
+    if filename is None or filename == '':
+        return
+    queries_results = []
+    with open(filename,'r') as queries_file:
+        queries = re.findall(r'<top>(.*?)</top>', queries_file.read(), re.DOTALL)
+        for query_file in queries:
+            query_id, query, query_desc = extract_query_params_from_query(query_file)
+            queries_results.append(run_one_query(query=query, query_id=query_id, query_desc=query_desc ))
+    queries_gui(queries_results)
 
 
-def run_expansion():
-    print 'expansion'
+
+def extract_query_params_from_query(query_file):
+    num_line = re.findall(r'<num>(.*?)\n',query_file)[0]
+    query_id = re.findall('\d+',num_line)[0]
+    query = re.findall(r'<title>(.*?)\n',query_file)[0].strip()
+    desc = re.findall(r'<desc>(.*?)<narr>', query_file, re.DOTALL)[0].strip()
+    # remove meaningless words from the desc
+    irrelavant_words= {'description','find','documents', 'discuss', 'called', 'identify'}
+    desc = ' '.join([word for word in re.split('\n|\s',desc)
+                     if word.lower().strip().translate(None, string.punctuation) not in irrelavant_words ])
+    return query_id, query, desc
+
+
+def run_expansion(query):
+    # serarch for a word in wikipedia
+    if len(query.split()) > 1:
+        tkMessageBox.showinfo('ERROR', 'more than one word')
+        return
+    try:
+        wiki_page = wikipedia.page(query)
+        not_start_with = ('cs1','articles','all', 'wikipedia', 'Use', 'webarchive', 'coordinates')
+        wiki_categories = [category for category in wiki_page.categories
+                           if not category.lower().startswith(not_start_with)]
+        if len(wiki_categories) > 4:
+            wiki_categories = random.choice(wiki_categories, size=4, replace=False).tolist()
+        queries_results = []
+        num_of_docs = 70/len(wiki_categories)
+        for i, category in enumerate(wiki_categories):
+            queries_results.append(run_one_query(query=category, num_of_docs=num_of_docs, query_id= i+100))
+        queries_gui(queries_results)
+    except wikipedia.WikipediaException as err:
+        print err
+        tkMessageBox.showinfo('Wiki Error',
+                              'there was a wikipedia error - {}.\n loading from regular database'.format(err))
+        queries_gui([run_one_query(query)])
+        # no value was found
 
 
 def reset_part_two():
@@ -595,11 +665,25 @@ def reset_part_two():
     print 'reset_part_two'
     if not check_dictionaries_loaded():
         return
-    # TODO - add are you sure reset..
-    # TODO - verify query guies is not empty
-    for gui in query_guies:
-        gui.destroy()
+    result = tkMessageBox.askquestion("Reset Part 2",
+                                      "Are you sure you want to reset?\n", icon='warning')
+    if result != 'yes':
+        return
+    if (globs.main_dictionary is not None) and (bool(globs.main_dictionary)):
+        globs.main_dictionary.clear()
+    if (globs.cache is not None) and (bool(globs.cache)):
+        globs.cache.clear()
+    if (globs.documents_dict is not None) and (bool(globs.documents_dict)):
+        globs.documents_dict.clear()
+    for one_gui in query_guies:
+        one_gui.destroy()
     query_guies = []
+
+    for results_file in globs.results_files:
+        os.unlink(results_file)
+    globs.results_files = []
+
+    tkMessageBox.showinfo('OK', 'dict & cache was reset, results are deleted')
 
 
 if __name__ == '__main__':
@@ -607,4 +691,4 @@ if __name__ == '__main__':
     gui()
 
 # TODO - in report & labs, download nltk punkt like this - import nltk, nltk.download('punkt')
-# TODO - install wikipedia open source
+# TODO - install wikipedia open source, numpy random

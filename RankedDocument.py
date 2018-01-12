@@ -1,24 +1,26 @@
 class RankedDocument:
     PRINT_DELIMITER = '*'
 
-    def __init__(self, docno, score, term, document_weight):
+    def __init__(self, docno, tfidf_score, term, document_weight, bm25):
         self.docno = docno
-        self.score = score
+        self.tfidf_score = tfidf_score
         self.terms = {term}
         self.document_weight = document_weight
+        self.bm25 = bm25
         self.final_score = 0
 
-    def update_score(self, score, term):
-        self.score += score
+    def update_score(self, tfidf_score, term, bm25):
+        self.tfidf_score += tfidf_score
+        self.bm25 += bm25
         self.terms.add(term)
 
     def __repr__(self):
-        return "%s%s%s%s%s%s%s" % (self.docno, RankedDocument.PRINT_DELIMITER, self.score,
+        return "%s%s%s%s%s%s%s" % (self.docno, RankedDocument.PRINT_DELIMITER, self.tfidf_score,
                                    RankedDocument.PRINT_DELIMITER, str(self.terms),
                                    RankedDocument.PRINT_DELIMITER, self.final_score)
 
     def __str__(self):
-        return "%s%s%s%s%s%s%s" % (self.docno, RankedDocument.PRINT_DELIMITER, self.score,
+        return "%s%s%s%s%s%s%s" % (self.docno, RankedDocument.PRINT_DELIMITER, self.tfidf_score,
                                    RankedDocument.PRINT_DELIMITER, str(self.terms),
                                    RankedDocument.PRINT_DELIMITER, self.final_score)
 

@@ -45,12 +45,23 @@ class Searcher:
             posting_file.read_line_by_position(term_dict.pointer, is_cache)
             for posting_term in posting_file.postings:
                 document = globs.documents_dict[posting_term.docno]
-                tfidf = (posting_term.get_tf_value() / document.max_tf) * log(float(num_of_documents) / float(df), 2)
+                term_tf = posting_term.get_tf_value()
+                tfidf = (term_tf / document.max_tf) * log(float(num_of_documents) / float(df), 2)
+                bm25 = self.__calculate_bm25(document.real_length, df, posting_term.count)
                 ranked_document = relevant_documents.get(posting_term.docno, False)
                 if ranked_document is not False:
-                    ranked_document.update_score(tfidf, word)
+                    ranked_document.update_score(tfidf, word, bm25)
                 else:
                     relevant_documents[posting_term.docno] = RankedDocument(posting_term.docno, tfidf, word,
-                                                                            document.weight)
+                                                                            document.weight, bm25)
             posting_file.close_posting_file()
         return relevant_documents
+
+    def __calculate_bm25(self, document_size, df, term_tf):
+        b = 0.75
+        k1 = 1.5
+        idf = log((float(globs.num_of_documents) - float(df) + 0.5)/(float(df) + 0.5))
+        b_comp = 1 - b + b*(float(document_size)/float(globs.average_doc_size))
+        bm = (float(term_tf)*(k1+1))/(float(term_tf)+k1*b_comp)
+        return bm*idf
+

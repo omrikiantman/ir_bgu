@@ -202,5 +202,6 @@ class Indexer:
                     document =  documents_dict[term.docno]
                     document.weight += (term.get_tf_value()/document.max_tf)\
                                        * log(float(num_of_documents)/float(df), 2)
+                    document.real_length += term.count
                 file_not_closed = posting_file.read_next_term_string()
-
+        globs.average_doc_size = sum(val.real_length for key, val in globs.documents_dict.iteritems())

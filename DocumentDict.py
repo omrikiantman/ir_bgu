@@ -8,7 +8,8 @@ class DocumentDict:
         self.length = length
         self.num_of_words = num_of_words
         self.file_name = file_name
-        self.weight = 0
+        self.weight = 0  # this is the sigma of tf idf for the entire document
+        self.real_length = 0
 
     def __repr__(self):
         return "%s%s%s%s%s" % (self.max_tf, DocumentDict.PRINT_DELIMITER, self.length, DocumentDict.PRINT_DELIMITER,
