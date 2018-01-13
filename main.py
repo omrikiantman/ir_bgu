@@ -528,7 +528,7 @@ def run_manual_query():
 
 
 def run_one_query(query, num_of_docs=50, query_id=None, query_desc=None):
-    # given  query
+    # run one query, return it ranked documents and the time it took to calculate it
     global is_stemming
     global dict_cache_path
     print ('{} - RUN query {} - '.format(time.strftime("%H:%M:%S"), query))

@@ -66,6 +66,7 @@ class Term:
         return hash(self.name)
 
     def get_tf_value(self):
+        # a custom formula to calculate the tf value. header has double meaning, first 200 words is 1.2 more important
         if self.is_header is True:
             return float(self.count * 2)
         if self.first_location <= 200:

@@ -12,6 +12,7 @@ global results_files
 
 
 def init_globs():
+    # init all the global parameters
     global main_dictionary
     global num_of_documents
     global stop_words

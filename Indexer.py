@@ -187,21 +187,24 @@ class Indexer:
                 posting_file.close()
 
     def build_document_weight(self, documents_dict):
+        # build the sigma tfidf (weighet) for each document
         print ('START build_document_weight - ' + time.strftime("%H:%M:%S"))
         file_names = '0' + ascii_lowercase
         num_of_documents = globs.num_of_documents
         for letter in file_names:
+            # loop over each posting file, for each term add the document grade
             posting_file_path = ''.join([os.path.join(self.root_path,
-                                                       Indexer.STEMMING_PREFIX if self.is_stemming is True else ''),
-                                          Indexer.POSTING_PREFIX, letter, '.txt'])
+                                                      Indexer.STEMMING_PREFIX if self.is_stemming is True else ''),
+                                         Indexer.POSTING_PREFIX, letter, '.txt'])
             posting_file = PostingFile.PostingFile(posting_file_path, letter, False)
             file_not_closed = True
             while file_not_closed:
                 df = len(posting_file.postings)
                 for term in posting_file.postings:
-                    document =  documents_dict[term.docno]
-                    document.weight += (term.get_tf_value()/document.max_tf)\
-                                       * log(float(num_of_documents)/float(df), 2)
+                    # calculate tfidf score for each term, add it to the document weight
+                    document = documents_dict[term.docno]
+                    document.weight += (term.get_tf_value()/document.max_tf)*log(float(num_of_documents)/float(df), 2)
                     document.real_length += term.count
                 file_not_closed = posting_file.read_next_term_string()
+        # at the end we use the bm25 formula, so we need to calculate the average doc size
         globs.average_doc_size = sum(val.real_length for key, val in globs.documents_dict.iteritems())

@@ -10,6 +10,7 @@ class RankedDocument:
         self.final_score = 0
 
     def update_score(self, tfidf_score, term, bm25):
+        # update the tfidf & bm25 score
         self.tfidf_score += tfidf_score
         self.bm25 += bm25
         self.terms.add(term)
@@ -25,6 +26,7 @@ class RankedDocument:
                                    RankedDocument.PRINT_DELIMITER, self.final_score)
 
     def __cmp__(self, other):
+        # compare between documents according to their final_score
         self.final_score = float(self.final_score)
         other.final_score = float(other.final_score)
         if self.final_score > other.final_score:

@@ -50,6 +50,7 @@ class PostingFile:
         self.postings = Term.postings_string_to_array_of_terms(self.term_name, postings)
 
     def read_line_by_position(self, position, is_cache, term_name=None):
+        # given a specific position in the file (byte), read a line from there and parse it
         position = position - 1 if is_cache is True else position
         self.file.seek(int(position))
         line = self.file.readline().strip()
@@ -59,17 +60,13 @@ class PostingFile:
             self.parse_posting_line_not_from_start(line, term_name)
 
     def parse_posting_line_not_from_start(self, line, term_name):
-        # apparently something wicked is going on while reading a line from the start
-        # some sanity checks were made to avoid these.
+        # read a postings term not from the middle of the line, usually for a term in the cache
+        # some sanity checks were made to avoid wicked errors.
         if line[0] == ',':
             line = line[1:].strip()
         elif line[1] == ',':
             line = line[2:].strip()
-        # postings_size = len(line)
-        # postings = line[:postings_size - 1] if line[postings_size] == ']'
         self.postings = Term.postings_string_to_array_of_terms(term_name, line)
-
-
 
     def close_posting_file(self):
         self.file.close()
