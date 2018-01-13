@@ -1,6 +1,6 @@
 # this is the docno parser
 import re
-from nltk import sent_tokenize, PorterStemmer, word_tokenize
+from nltk import sent_tokenize
 import shared_variables as globs
 from Parse import Parse
 from math import log
@@ -34,8 +34,6 @@ class DocnoParser:
 
     def find_top_5_sentences(self):
         # return a list of 5 top sentences, sorted by sum(tfidf) for each word in a sentence
-        if self.is_stemming:
-            stemmer = PorterStemmer()
         # extract terms from the entire document
         parser = Parse(globs.constants, globs.stop_words, self.is_stemming)
         parser.parse_document(self.content)
@@ -50,11 +48,11 @@ class DocnoParser:
                 sentence_parser.parse_document(sentence)
                 sentence_terms = sentence_parser.terms
                 sentence_length = sum([int(term.count) for key, term in sentence_terms.iteritems()])
-                if sentence_length == 0:
+                if sentence_length in (0, 1):
                     continue
-                sentence_score = sum([(float(terms[token].count)/self.max_tf)
+                sentence_score = sum([(float(sentence_terms[token].count)/self.max_tf)
                                       * log(float(globs.num_of_documents)/float(globs.main_dictionary[token].df), 2)
-                                      for token in sentence_terms])/float(sentence_length)
+                                      for token in sentence_terms])/log(float(sentence_length), 2)
                 # append each original sentence with it's grade & position
                 parsed_sentences.append((sentence, sentence_score, position))
             # find the top 5 sentences and return their rank, position and of course the sentence itself

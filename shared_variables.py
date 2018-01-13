@@ -20,7 +20,6 @@ def init_globs():
     global documents_dict
     global cache
     global average_doc_size
-    global average_doc_size_two
     global results_files
     cache = None
     documents_dict = None

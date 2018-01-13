@@ -648,7 +648,8 @@ def run_expansion(query):
         return
     try:
         wiki_page = wikipedia.page(query)
-        not_start_with = ('cs1', 'articles', 'all', 'wikipedia', 'use', 'webarchive', 'coordinates', 'disambiguation')
+        not_start_with = ('cs1', 'articles', 'all', 'wikipedia', 'use', 'webarchive', 'coordinates', 'disambiguation',
+                          'pages using', 'spoken articles', 'citation overkill')
         wiki_categories = [category for category in wiki_page.categories
                            if not category.lower().startswith(not_start_with)]
         if len(wiki_categories) > 4:
