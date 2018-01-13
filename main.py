@@ -454,7 +454,6 @@ def load_dict_cache():
     global dict_cache_path
     try:
         temp_path = tkFileDialog.askdirectory()
-        # TODO verify that a path was chosen
         if (temp_path is None) or (temp_path == ''):
             return
         dict_cache_path.set(temp_path)
@@ -465,20 +464,24 @@ def load_dict_cache():
         if (globs.documents_dict is not None) and (bool(globs.documents_dict)):
             globs.documents_dict.clear()
         # the utils is hardcoded due to a clarification stated in the forum
+        print ('START LOAD STOP WORDS - ' + time.strftime("%H:%M:%S"))
         globs.stop_words = load_stop_words('utils')
         cache_path = os.path.join(dict_cache_path.get(),
                                   STEMMING_PREFIX if is_stemming.get() is True else '') + CACHE_PREFIX
+        print ('START LOAD CACHE - ' + time.strftime("%H:%M:%S"))
         globs.cache = CacheTerm.create_cache_from_disk(cache_path)
         dict_path = os.path.join(dict_cache_path.get(),
                                  STEMMING_PREFIX if is_stemming.get() is True else '') + DICTIONARY_PREFIX
+        print ('START LOAD MAIN DICTIONARY - ' + time.strftime("%H:%M:%S"))
         globs.main_dictionary = TermDict.create_main_dictionary_from_disk(dict_path, globs.cache.keys())
         documents_dict_path = os.path.join(dict_cache_path.get(),
                                            STEMMING_PREFIX if is_stemming.get() is True else '') + DOCUMENTS_PREFIX
+        print ('START LOAD DOCUMENTS DICTIONARY - ' + time.strftime("%H:%M:%S"))
         with open(documents_dict_path, 'rb') as fp:
             globs.documents_dict = Pickle.load(fp)
             globs.num_of_documents = Pickle.load(fp)
             globs.average_doc_size = Pickle.load(fp)
-        # TODO make sure the documents dict is included in all of the exams
+        print ('FINISH LOADING - ' + time.strftime("%H:%M:%S"))
         tkMessageBox.showinfo('OK', 'cache & dictionary loaded')
     except Exception as err:
         tkMessageBox.showinfo('ERROR', err)
@@ -525,8 +528,10 @@ def run_manual_query():
 
 
 def run_one_query(query, num_of_docs=50, query_id=None, query_desc=None):
+    # given  query
     global is_stemming
     global dict_cache_path
+    print ('{} - RUN query {} - '.format(time.strftime("%H:%M:%S"), query))
     query_id = 999 if query_id is None else query_id
     start_time = datetime.now()
     searcher = Searcher(query, is_stemming.get(), dict_cache_path.get(), query_desc)
@@ -548,13 +553,13 @@ def queries_gui(queries_results):
     results_text = Text(query_gui, yscrollcommand=scrollbar_docno.set, height=20, width=140)
 
     scrollbar_docno.config(command=results_text.yview)
-    for i, (ranked_documents, query ,elapsed_time, query_id) in enumerate(queries_results):
+    for i, (ranked_documents, query, elapsed_time, query_id) in enumerate(queries_results):
         results_text.insert(END,
                             '\n{}.Query - \"{}\". {} documents returned in {} seconds\nDocnos:'
                             .format(i+1, query, len(ranked_documents), elapsed_time))
         for j, document in enumerate(ranked_documents):
             if j % 10 == 0:
-                results_text.insert(END,'\n')
+                results_text.insert(END, '\n')
             results_text.insert(END, '{} '.format(document.docno))
 
     results_text.pack(side=LEFT, fill=BOTH, expand=True)
@@ -564,20 +569,21 @@ def queries_gui(queries_results):
 
 def save_results(queries_results):
     # save query results to a file
-    options = {'defaultextension':'.txt'}
+    options = {'defaultextension': '.txt'}
     file_name = tkFileDialog.asksaveasfilename(**options)
     if file_name is None or file_name == "":
         return
     with open(file_name, 'w') as results_file:
-        for i, (ranked_documents, query ,elapsed_time, query_id) in enumerate(queries_results):
+        for i, (ranked_documents, query, elapsed_time, query_id) in enumerate(queries_results):
             for j, document in enumerate(ranked_documents):
-                written_row = " ".join([str(query_id), '0', str(document.docno), str(j), '42.38', 'mt','\n'])
+                written_row = " ".join([str(query_id), '0', str(document.docno), str(j), '42.38', 'mt', '\n'])
                 results_file.write(written_row)
     # save the file name in case we want to reset
     globs.results_files.append(file_name)
 
 
 def run_docno(docno):
+    # given a docno, find the top 5 senteces out of it
     global is_stemming
     global dict_cache_path
     global query_guies
@@ -609,40 +615,40 @@ def run_docno(docno):
 
 
 def run_file_query():
+    # given a file that contains trec queries, evaluate them
     filename = tkFileDialog.askopenfilename()
-    print (filename)
     if filename is None or filename == '':
         return
     queries_results = []
-    with open(filename,'r') as queries_file:
+    with open(filename, 'r') as queries_file:
         queries = re.findall(r'<top>(.*?)</top>', queries_file.read(), re.DOTALL)
         for query_file in queries:
             query_id, query, query_desc = extract_query_params_from_query(query_file)
-            queries_results.append(run_one_query(query=query, query_id=query_id, query_desc=query_desc ))
+            queries_results.append(run_one_query(query=query, query_id=query_id, query_desc=query_desc))
     queries_gui(queries_results)
 
 
-
 def extract_query_params_from_query(query_file):
-    num_line = re.findall(r'<num>(.*?)\n',query_file)[0]
-    query_id = re.findall('\d+',num_line)[0]
-    query = re.findall(r'<title>(.*?)\n',query_file)[0].strip()
+    # given a query in the trec format, extract the query id, query title and query description
+    num_line = re.findall(r'<num>(.*?)\n', query_file)[0]
+    query_id = re.findall('\d+', num_line)[0]
+    query = re.findall(r'<title>(.*?)\n', query_file)[0].strip()
     desc = re.findall(r'<desc>(.*?)<narr>', query_file, re.DOTALL)[0].strip()
     # remove meaningless words from the desc
-    irrelavant_words= {'description','find','documents', 'discuss', 'called', 'identify'}
-    desc = ' '.join([word for word in re.split('\n|\s',desc)
-                     if word.lower().strip().translate(None, string.punctuation) not in irrelavant_words ])
+    irrelevant_words = {'description', 'find', 'documents', 'discuss', 'called', 'identify'}
+    desc = ' '.join([word for word in re.split('\n|\s', desc)
+                     if word.lower().strip().translate(None, string.punctuation) not in irrelevant_words])
     return query_id, query, desc
 
 
 def run_expansion(query):
-    # serarch for a word in wikipedia
+    # search for a word in wikipedia, pick 4 random categories of it and query them
     if len(query.split()) > 1:
         tkMessageBox.showinfo('ERROR', 'more than one word')
         return
     try:
         wiki_page = wikipedia.page(query)
-        not_start_with = ('cs1','articles','all', 'wikipedia', 'Use', 'webarchive', 'coordinates')
+        not_start_with = ('cs1', 'articles', 'all', 'wikipedia', 'use', 'webarchive', 'coordinates', 'disambiguation')
         wiki_categories = [category for category in wiki_page.categories
                            if not category.lower().startswith(not_start_with)]
         if len(wiki_categories) > 4:
@@ -650,7 +656,7 @@ def run_expansion(query):
         queries_results = []
         num_of_docs = 70/len(wiki_categories)
         for i, category in enumerate(wiki_categories):
-            queries_results.append(run_one_query(query=category, num_of_docs=num_of_docs, query_id= i+100))
+            queries_results.append(run_one_query(query=category, num_of_docs=num_of_docs, query_id=i+100))
         queries_gui(queries_results)
     except wikipedia.WikipediaException as err:
         print err
@@ -661,8 +667,8 @@ def run_expansion(query):
 
 
 def reset_part_two():
+    # reset cache & documents dict & main dictionary. close Guis, delete results files
     global query_guies
-    print 'reset_part_two'
     if not check_dictionaries_loaded():
         return
     result = tkMessageBox.askquestion("Reset Part 2",

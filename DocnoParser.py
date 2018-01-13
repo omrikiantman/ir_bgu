@@ -36,15 +36,16 @@ class DocnoParser:
         # return a list of 5 top sentences, sorted by sum(tfidf) for each word in a sentence
         if self.is_stemming:
             stemmer = PorterStemmer()
-        # find the tf of each word in th
+        # extract terms from the entire document
         parser = Parse(globs.constants, globs.stop_words, self.is_stemming)
         parser.parse_document(self.content)
         terms = parser.terms
+        # split the document into sentences
         sentences = sent_tokenize(self.content)
         parsed_sentences = []
         try:
             for position, sentence in enumerate(sentences):
-                # assign grade for each document
+                # parse & assign grade for each sentence
                 sentence_parser = Parse(globs.constants, globs.stop_words, self.is_stemming)
                 sentence_parser.parse_document(sentence)
                 sentence_terms = sentence_parser.terms
@@ -54,7 +55,9 @@ class DocnoParser:
                 sentence_score = sum([(float(terms[token].count)/self.max_tf)
                                       * log(float(globs.num_of_documents)/float(globs.main_dictionary[token].df), 2)
                                       for token in sentence_terms])/float(sentence_length)
+                # append each original sentence with it's grade & position
                 parsed_sentences.append((sentence, sentence_score, position))
+            # find the top 5 sentences and return their rank, position and of course the sentence itself
             top_5_sentences = sorted(parsed_sentences, key=lambda tup: tup[1], reverse=True)[:5]
             ranked_5_sentences = []
             for rank, sentence in enumerate(top_5_sentences):

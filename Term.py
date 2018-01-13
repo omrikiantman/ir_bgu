@@ -76,6 +76,8 @@ class Term:
 def term_string_to_term_object(name, term_string):
     # convert a term string, the was it's written in disk, to a term object
     count, is_header, first_location, docno = term_string.split("|")
+    if docno[-1:] == ',':
+        docno = docno[:-1]
     return Term(name,bool(int(is_header)), int(first_location), docno,int(count))
 
 

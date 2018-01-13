@@ -30,20 +30,30 @@ class Searcher:
     def __retrieve_relevant_documents(self, query_terms):
         num_of_documents = globs.num_of_documents
         relevant_documents = {}
+        posting_file = None
         for word in query_terms:
             term_dict = globs.main_dictionary.get(word,False)
             if term_dict is False:
                 continue
             df = term_dict.df
-            # TODO - get the position first by cache then by postings
-            is_cache = False
-            first_letter = word[0] if word[0].isalpha() else '0'
-            posting_file_path = os.path.join(self.postings_path,
-                                             ''.join([Indexer.STEMMING_PREFIX if self.is_stemming is True else '',
-                                                      Indexer.POSTING_PREFIX, first_letter, '.txt']))
-            posting_file = PostingFile.PostingFile(posting_file_path, '0', False)
-            posting_file.read_line_by_position(term_dict.pointer, is_cache)
-            for posting_term in posting_file.postings:
+            pointer = int(term_dict.pointer)
+            postings = []
+            is_cache = term_dict.is_cache
+            if is_cache is True:
+                cache_element = globs.cache[word]
+                postings += cache_element.doc_list
+                pointer = int(cache_element.pointer)
+                if int(cache_element.bytes) == 0:
+                    pointer = 0
+            if pointer != 0:
+                first_letter = word[0] if word[0].isalpha() else '0'
+                posting_file_path = os.path.join(self.postings_path,
+                                                 ''.join([Indexer.STEMMING_PREFIX if self.is_stemming is True else '',
+                                                          Indexer.POSTING_PREFIX, first_letter, '.txt']))
+                posting_file = PostingFile.PostingFile(posting_file_path, '0', False)
+                posting_file.read_line_by_position(pointer, is_cache, word)
+                postings += posting_file.postings
+            for posting_term in postings:
                 document = globs.documents_dict[posting_term.docno]
                 term_tf = posting_term.get_tf_value()
                 tfidf = (term_tf / document.max_tf) * log(float(num_of_documents) / float(df), 2)
@@ -54,7 +64,8 @@ class Searcher:
                 else:
                     relevant_documents[posting_term.docno] = RankedDocument(posting_term.docno, tfidf, word,
                                                                             document.weight, bm25)
-            posting_file.close_posting_file()
+            if posting_file is not None:
+                posting_file.close_posting_file()
         return relevant_documents
 
     def __calculate_bm25(self, document_size, df, term_tf):

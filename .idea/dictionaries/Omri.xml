@@ -4,6 +4,8 @@
       <w>docno</w>
       <w>guies</w>
       <w>tfidf</w>
+      <w>webarchive</w>
+      <w>wikipedia</w>
     </words>
   </dictionary>
 </component>

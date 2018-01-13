@@ -18,7 +18,7 @@ class PostingFile:
     def read_next_term_string(self):
         # read the next string from a posting file
         if not bool(self.lines_array):
-            self.lines_array = [self.file.readline() for dummy in range(PostingFile.MAX_ROWS_TO_READ)]
+            self.lines_array = [self.file.readline().strip() for dummy in range(PostingFile.MAX_ROWS_TO_READ)]
         line = self.lines_array[0]
         if line.strip() == '':
             self.file.close()
@@ -44,18 +44,32 @@ class PostingFile:
         self.term_name = line[0:cut_point]
         postings = line[cut_point:]
         postings_size = len(postings)
-        # remove the ':[' and ']\n'
+        # remove the ':[' and ']'
         chars_to_del = 2 if postings[1] == '[' else 1
-        postings = postings[chars_to_del:postings_size - chars_to_del]
+        postings = postings[chars_to_del:postings_size - chars_to_del + 1]
         self.postings = Term.postings_string_to_array_of_terms(self.term_name, postings)
 
-    def read_line_by_position(self, position, is_cache):
+    def read_line_by_position(self, position, is_cache, term_name=None):
+        position = position - 1 if is_cache is True else position
         self.file.seek(int(position))
+        line = self.file.readline().strip()
         if not is_cache:
-            self.parse_posting_file_line(self.file.readline())
+            self.parse_posting_file_line(line)
         else:
-            pass
-        # TODO add something to read & parse the right position if it's a cache record
+            self.parse_posting_line_not_from_start(line, term_name)
+
+    def parse_posting_line_not_from_start(self, line, term_name):
+        # apparently something wicked is going on while reading a line from the start
+        # some sanity checks were made to avoid these.
+        if line[0] == ',':
+            line = line[1:].strip()
+        elif line[1] == ',':
+            line = line[2:].strip()
+        # postings_size = len(line)
+        # postings = line[:postings_size - 1] if line[postings_size] == ']'
+        self.postings = Term.postings_string_to_array_of_terms(term_name, line)
+
+
 
     def close_posting_file(self):
         self.file.close()
